@@ -10,6 +10,6 @@ Game arcade satire bertema program makan siang gratis. Kamu relawan dapur yang h
 - Hindari 🪰 lalat, 🪨 kerikil, 🦠 lauk kemarin, dan 🐀 tikus berdasi.
 - Power-up: 🤝 orang dalam, 📢 viral, 🧋 es teh, ❤️ warga patungan.
 
-Satu file HTML tanpa build step. Jalankan dengan membuka `index.html` di browser.
+Dibuat dengan [Phaser 3](https://phaser.io) (dimuat dari CDN). Arena permainan dirender Phaser, sedangkan HUD dan overlay memakai HTML biasa. Satu file `index.html` tanpa build step: buka langsung di browser atau lewat static server mana pun.
 
 *Satire. Semua lembaga, tokoh, dan berita di game ini fiktif.*
