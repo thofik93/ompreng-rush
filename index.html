@@ -149,7 +149,7 @@ header{background:var(--merah);color:var(--putih);padding-block:10px;display:fle
   </div>
 
   <main class="stage" id="stage">
-    <div class="release" id="release" hidden><b>RILIS RESMI</b><span id="releaseText"></span></div>
+    <div class="release" id="release" hidden><b id="releaseLabel">RILIS RESMI</b><span id="releaseText"></span></div>
 
     <div class="overlay" id="startOv">
       <div class="card">
@@ -160,7 +160,7 @@ header{background:var(--merah);color:var(--putih);padding-block:10px;display:fle
           <div class="no"><b>Hindari</b><span class="ic">🪰🪨<br>🦠🐀</span><span class="hint">yang dilingkari merah</span></div>
           <div class="bonus"><b>Bonus</b><span class="ic">🤝📢<br>🧋❤️</span><span class="hint">yang bercahaya</span></div>
         </div>
-        <p class="controls">👆 Geser jari atau mouse &nbsp;·&nbsp; ⌨️ ← →</p>
+        <p class="controls">👆 Geser jari atau mouse &nbsp;·&nbsp; ⌨️ ← →<br>🔊 Nyalakan suara untuk mendengar sambutan Pak Pejabat</p>
         <button class="btn" id="startBtn" disabled>Menyiapkan dapur…</button>
         <div class="small" id="startBest">Rekor kamu: 0</div>
         <div class="small">*Syarat dan ketentuan berlaku. Gratis karena sudah dibayar lewat pajak. Satire: semua lembaga, tokoh, dan berita di game ini fiktif.</div>
@@ -242,7 +242,7 @@ const STEAL = ['Disunat 10%!','Tikus berdasi ambil lauk!','Lauk "dikoordinasikan
 const RILIS = [
   'Itu bukan keracunan, hanya adaptasi pencernaan terhadap makanan bergizi.',
   'Oknum dapur sudah dibina. Dapurnya tetap beroperasi seperti biasa.',
-  'Kasus ini hanya 0,0001% dari total porsi dan kebetulan viral saja.',
+  'Kasus ini hanya sebagian sangat kecil dari total porsi dan kebetulan viral saja.',
   'Kami prihatin. Anggaran tahun depan tetap naik.',
   'Sampel sudah dikirim ke lab. Hasilnya diumumkan setelah beritanya reda.'
 ];
@@ -258,6 +258,22 @@ const NEWS = [
   'Rapat evaluasi program digelar di hotel bintang lima demi efisiensi.',
   'Juru bicara: "Kalau anaknya tidak kenyang, berarti makannya kurang ikhlas."'
 ];
+// lines for "Pak Pejabat", a fictional official voiced by the browser's text-to-speech
+const PEJABAT = {
+  start:['Selamat siang anak-anak. Makan siang gratis sudah siap. Syarat dan ketentuan berlaku.',
+    'Selamat siang. Hari ini kita makan bergizi. Gizinya ada di brosur.'],
+  visit:['Wah, menunya bagus sekali. Setiap hari seperti ini, kan?',
+    'Luar biasa. Ini bukti program kita berhasil. Tolong difoto dari sisi kiri.',
+    'Anak-anak, makan yang banyak ya. Kameranya sudah siap?'],
+  leave:['Baik, kami pamit. Rapat evaluasi sudah menunggu di hotel.',
+    'Terima kasih. Kami lanjut ke lokasi foto berikutnya.'],
+  cut:words => [`Demi efisiensi, jatah per porsi sekarang ${words} rupiah. Gizinya tetap, porsinya saja yang lebih hemat.`,
+    `Mulai hari ini jatahnya ${words} rupiah. Ini bukan pemotongan, ini penyesuaian.`],
+  over:['Program ini sukses seratus persen. Hasil evaluasi: dilanjutkan, anggaran ditambah.',
+    'Kami tidak melihat ada masalah. Yang ada hanya tantangan. Program jalan terus.']
+};
+const TERBILANG = { 15000:'lima belas ribu', 12500:'dua belas ribu lima ratus', 10000:'sepuluh ribu', 8000:'delapan ribu',
+  6500:'enam ribu lima ratus', 5000:'lima ribu', 4000:'empat ribu', 3000:'tiga ribu' };
 const RANKS = [[0,'Relawan Tak Dibayar'],[300,'Mitra Dapur (Nunggak 3 Bulan)'],[800,'Kepala Dapur'],[1600,'Konsultan Titipan'],[3000,'Pejabat Kunjungan'],[5000,'Wajah di Baliho']];
 
 // ================= state =================
@@ -305,11 +321,17 @@ const Hud = {
   happyKid() { const k = $('#kid'); k.classList.remove('happy'); void k.offsetWidth; k.classList.add('happy'); },
   budgetCut() { const c = $('#rp'); c.classList.remove('cut'); void c.offsetWidth; c.classList.add('cut'); },
   releaseTimer:0,
-  release(txt) {
+  // the stamped note doubles as a subtitle for everything Pak Pejabat says
+  release(txt, label) {
+    $('#releaseLabel').textContent = label || 'RILIS RESMI';
     $('#releaseText').textContent = txt;
     $('#release').hidden = false;
     clearTimeout(this.releaseTimer);
-    this.releaseTimer = setTimeout(() => { $('#release').hidden = true; }, 3200);
+    this.releaseTimer = setTimeout(() => { $('#release').hidden = true; }, Math.max(3200, txt.length * 70));
+  },
+  pejabat(txt) {
+    this.release(txt, '🎙️ PAK PEJABAT');
+    Voice.say(txt);
   },
   gameOver() {
     const isBest = S.score > best;
@@ -328,6 +350,8 @@ const Hud = {
       (S.visits ? `Pejabat telah meninjau dapur ${S.visits} kali dan sangat puas.` : 'Pejabat berhalangan hadir karena sedang rapat evaluasi.');
     $('#shareBtn').textContent = 'Salin Skor buat Pamer';
     $('#overOv').hidden = false;
+    $('#release').hidden = true;
+    Voice.say(pick(PEJABAT.over));
     this.stats();
     $('#againBtn').focus();
   }
@@ -372,6 +396,36 @@ const sfx = {
   cut: () => { tone(500, 500, .1, 'square', .06); tone(400, 400, .1, 'square', .06, .12); tone(300, 200, .25, 'square', .06, .24); },
   camera: () => { tone(2000, 1200, .05, 'square', .05); tone(2000, 1200, .05, 'square', .05, .15); }
 };
+
+// ================= Pak Pejabat's voice (browser text-to-speech) =================
+const Voice = {
+  ok: 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window,
+  voice: null,
+  init() {
+    if (!this.ok) return;
+    const choose = () => {
+      const all = speechSynthesis.getVoices();
+      this.voice = all.find(v => /^id[-_]/i.test(v.lang)) || all.find(v => /^id/i.test(v.lang)) || null;
+    };
+    choose();
+    speechSynthesis.addEventListener && speechSynthesis.addEventListener('voiceschanged', choose);
+  },
+  say(text) {
+    if (!this.ok || muted) return;
+    try {
+      // newest line wins, so speech never lags behind the game
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'id-ID';
+      if (this.voice) u.voice = this.voice;
+      u.rate = .95;
+      u.pitch = .6;   // a little lower and slower: podium voice
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  },
+  stop() { if (this.ok) try { speechSynthesis.cancel(); } catch (e) {} }
+};
+Voice.init();
 
 // ================= Phaser scene =================
 const EMOJI_PX = 80, EMOJI_TEX = 112, EMOJI_SCALE = EMOJI_TEX / EMOJI_PX;
@@ -682,7 +736,9 @@ class Canteen extends Phaser.Scene {
       } else if (it.key === 'basi') {
         S.kasus++;
         this.hurt('Lauk kemarin!');
-        Hud.release(pick(RILIS));
+        const rilis = pick(RILIS);
+        Hud.release(rilis);
+        Voice.say('Rilis resmi. ' + rilis);
       } else {
         this.hurt(pick(HAZ[it.key].lines));
       }
@@ -723,6 +779,7 @@ class Canteen extends Phaser.Scene {
           nextNews(`Efisiensi: jatah per porsi dipangkas jadi ${rupiah(S.budget)}. Anggaran rapat tidak terdampak.`);
           Hud.budgetCut();
           sfx.cut();
+          Hud.pejabat(pick(PEJABAT.cut(TERBILANG[S.budget] || S.budget)));
         } else {
           this.float('LEVEL ' + lv + '! Jatah sudah mentok ' + rupiah(S.budget), this.W / 2, this.H * .2, '#D7263D', 18);
         }
@@ -759,6 +816,7 @@ class Canteen extends Phaser.Scene {
     this.float('Menu mendadak mewah. Poin x2', this.W / 2, this.H * .22 + 28, '#2A1A17', 16);
     nextNews('Pejabat tinjau dapur: "Menunya bagus sekali, setiap hari seperti ini?"');
     sfx.camera();
+    Hud.pejabat(pick(PEJABAT.visit));
     this.syncOrder();
     Hud.stats();
   }
@@ -767,6 +825,7 @@ class Canteen extends Phaser.Scene {
     S.visitIn = rand(22, 32);
     this.carpet.setVisible(false);
     this.float('Kamera pergi. Menu kembali normal.', this.W / 2, this.H * .3, '#6E5A55', 18);
+    Hud.pejabat(pick(PEJABAT.leave));
     this.syncOrder();
     Hud.stats();
   }
@@ -908,7 +967,7 @@ function togglePause() {
   if (!S.running || !scene) return;
   S.paused = !S.paused;
   $('#pauseOv').hidden = !S.paused;
-  if (S.paused) scene.scene.pause(); else scene.scene.resume();
+  if (S.paused) { scene.scene.pause(); Voice.stop(); } else scene.scene.resume();
 }
 
 function start() {
@@ -917,6 +976,7 @@ function start() {
   $('#startOv').hidden = true; $('#overOv').hidden = true; $('#pauseOv').hidden = true; $('#release').hidden = true;
   if (S.paused) { S.paused = false; scene.scene.resume(); }
   scene.reset();
+  Hud.pejabat(pick(PEJABAT.start));
 }
 
 $('#startBtn').addEventListener('click', start);
@@ -927,7 +987,7 @@ addEventListener('keydown', e => { if (e.key === 'p' || e.key === 'P' || e.key =
 document.addEventListener('visibilitychange', () => { if (document.hidden && S.running && !S.paused) togglePause(); });
 
 function syncMute() { const b = $('#mute'); b.textContent = muted ? '🔇' : '🔊'; b.setAttribute('aria-label', muted ? 'Nyalakan suara' : 'Matikan suara'); }
-$('#mute').addEventListener('click', () => { muted = !muted; store.set('ompreng-muted', muted ? '1' : '0'); syncMute(); });
+$('#mute').addEventListener('click', () => { muted = !muted; store.set('ompreng-muted', muted ? '1' : '0'); if (muted) Voice.stop(); syncMute(); });
 syncMute();
 
 $('#shareBtn').addEventListener('click', () => {
